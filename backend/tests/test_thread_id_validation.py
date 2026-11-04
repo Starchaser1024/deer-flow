@@ -77,6 +77,53 @@ def test_support_bundle_thread_id_pattern_matches_canonical() -> None:
     assert module.SAFE_THREAD_ID_RE.pattern == THREAD_ID_PATTERN
 
 
+@pytest.mark.parametrize("thread_id", ["NUL", "nul", "Nul"])
+def test_validate_thread_id_rejects_windows_null_device(monkeypatch: pytest.MonkeyPatch, thread_id: str) -> None:
+    """Windows resolves NUL to the null device, so no workspace can exist below it."""
+    import os
+
+    from deerflow.utils.thread_id import validate_thread_id
+
+    monkeypatch.setattr(os, "name", "nt")
+    with pytest.raises(ValueError, match="Invalid thread_id"):
+        validate_thread_id(thread_id)
+
+
+def test_validate_thread_id_keeps_null_device_on_posix(monkeypatch: pytest.MonkeyPatch) -> None:
+    """NUL is an ordinary file name outside Windows, so the POSIX contract is unchanged."""
+    import os
+
+    from deerflow.utils.thread_id import validate_thread_id
+
+    monkeypatch.setattr(os, "name", "posix")
+    assert validate_thread_id("NUL") == "NUL"
+
+
+def test_thread_create_request_rejects_windows_null_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    from pydantic import ValidationError
+
+    from app.gateway.routers.threads import ThreadCreateRequest
+
+    monkeypatch.setattr(os, "name", "nt")
+    with pytest.raises(ValidationError, match="Invalid thread_id"):
+        ThreadCreateRequest(thread_id="NUL")
+
+
+def test_windows_null_thread_id_is_rejected_before_workspace_creation(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    import os
+
+    from deerflow.config.paths import Paths
+
+    monkeypatch.setattr(os, "name", "nt")
+    paths = Paths(base_dir=tmp_path)
+    with pytest.raises(ValueError, match="Invalid thread_id"):
+        paths.ensure_thread_dirs("nul", user_id="test-user")
+    assert not (tmp_path / "users").exists()
+    assert not (tmp_path / "users" / "test-user" / "threads" / "nul").exists()
+
+
 def test_tui_resume_literal_ref_validated() -> None:
     """The TUI /resume fallback adopts a literal ref as thread id only when
     it satisfies the canonical contract."""

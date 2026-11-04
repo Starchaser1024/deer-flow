@@ -163,6 +163,9 @@ conversation-reference runs.
 Thread identifiers use the shared `deerflow.utils.thread_id` contract
 `^[A-Za-z0-9_-]{1,64}$`. Caller-provided opaque IDs remain supported; UUIDs
 are generated only for `None`, while explicit empty strings fail validation.
+On Windows the validator additionally rejects `NUL` in any case because the OS
+resolves it to the null device and cannot create a workspace below it; POSIX
+still accepts `NUL`.
 Gateway creation and state-producing request boundaries, embedded-client
 entry points, filesystem/upload/event-store consumers, scheduled launches,
 and the standalone Provisioner enforce the same contract before persistence

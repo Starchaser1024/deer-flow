@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from typing import Annotated
@@ -17,9 +18,13 @@ def validate_thread_id(thread_id: str) -> str:
 
     Thread IDs are caller-defined opaque identifiers, not necessarily UUIDs,
     but they must be safe for every persistence and filesystem backend.
+    Windows resolves ``NUL`` (in any case) to the null device, so no directory
+    can be created below that name; POSIX accepts it as an ordinary name.
     """
     if not isinstance(thread_id, str) or _THREAD_ID_RE.fullmatch(thread_id) is None:
         raise ValueError("Invalid thread_id: expected 1-64 ASCII letters, digits, hyphens, or underscores")
+    if os.name == "nt" and thread_id.lower() == "nul":
+        raise ValueError("Invalid thread_id: 'NUL' is the Windows null device and cannot name a thread")
     return thread_id
 
 

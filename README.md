@@ -3641,6 +3641,9 @@ Thread IDs may be supplied by callers and do not have to be UUIDs. Explicit
 IDs must contain 1–64 ASCII letters, digits, hyphens, or underscores
 (`^[A-Za-z0-9_-]{1,64}$`). DeerFlow generates a UUID only when `thread_id` is
 omitted or `None`; an explicitly supplied empty string is invalid.
+On Windows, `NUL` in any case is also rejected: the OS resolves it to the null
+device, so no thread workspace can be created below it. POSIX keeps accepting
+`NUL` as an ordinary name.
 Concurrent `POST /api/threads` requests and automatic run metadata creation share
 same-ID admission in one Gateway, preserving the first thread's metadata and status.
 HTTP retries also preserve its current checkpoint. SQL-backed Gateways retain
